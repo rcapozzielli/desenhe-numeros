@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desenhe dígitos para o Rafael</title>
+<meta property="og:title" content="Desenhe dígitos para o Rafael">
+<meta property="og:description" content="Me ajuda com uns números? Leva uns 5 minutos.">
+<style>
+  :root { --bg: #f4f4f2; --card: #fff; --texto: #1d1d1b; --suave: #6b6b66; --borda: #d9d9d4; --destaque: #2f5fd0; --ok: #2e7d4f; }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--texto); overflow-x: hidden; }
+  /* Canvas interno 280x280 (o PNG salvo é 280x280); na tela ele ocupa 100% da largura do card. */
+  main { max-width: 1180px; margin: 0 auto; padding: 24px 24px 64px; }
+  h1 { font-size: 1.3rem; margin: 0 0 8px; }
+  p { color: var(--suave); margin: 4px 0 16px; line-height: 1.45; max-width: 70ch; }
+  .card { background: var(--card); border: 1px solid var(--borda); border-radius: 10px; padding: 24px; min-width: 0; }
+
+  details.intro { margin-bottom: 24px; }
+  details.intro > summary { cursor: pointer; font-weight: 600; color: var(--destaque); padding: 6px 0; list-style-position: inside; }
+  details.intro[open] > summary { margin-bottom: 8px; }
+
+  /* Desktop: canvas à esquerda, número e envio à direita. Celular: número, canvas, envio (um embaixo do outro). */
+  .grade { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+           grid-template-areas: "tela alvo" "tela envio"; gap: 24px; align-items: start; }
+  .area-tela { grid-area: tela; } .area-alvo { grid-area: alvo; } .area-envio { grid-area: envio; }
+
+  .moldura { width: 100%; aspect-ratio: 1 / 1; border: 1px solid var(--borda); border-radius: 8px; overflow: hidden; }
+  canvas#tela { display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: none;
+                -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  .linha-alvo { display: flex; align-items: baseline; gap: 12px; margin-top: 16px; }
+  .alvo { font-size: 4rem; font-weight: 700; line-height: 1; color: var(--destaque); }
+  button { font: inherit; padding: 7px 12px; border-radius: 7px; border: 1px solid var(--borda); background: #fff; color: var(--texto);
+           cursor: pointer; touch-action: manipulation; }
+  button.principal { background: var(--destaque); color: #fff; border-color: var(--destaque); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  input[type="text"] { font: inherit; font-size: 16px; padding: 5px 8px; border-radius: 7px; border: 1px solid var(--borda); max-width: 100%; }
+  .botoes { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+  .pequeno { font-size: .85rem; color: var(--suave); }
+  .barra { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; margin: 6px 0 4px; }
+  .barra > div { height: 100%; width: 0; background: var(--destaque); transition: width .2s; }
+  .pronto { color: var(--ok); font-weight: 600; }
+  .aviso { color: #b3261e; font-size: .9rem; margin-top: 6px; }
+  ol { color: var(--suave); line-height: 1.5; padding-left: 20px; margin: 4px 0 0; }
+  code { overflow-wrap: anywhere; }
+
+  @media (max-width: 900px) {
+    main { padding: 12px 12px 48px; }
+    h1 { font-size: 1.15rem; }
+    .card { padding: 12px; }
+    details.intro { margin-bottom: 12px; }
+    .grade { grid-template-columns: minmax(0, 1fr); grid-template-areas: "alvo" "tela" "envio"; gap: 12px; }
+    .linha-alvo { margin-top: 10px; }
+    .alvo { font-size: 3rem; }
+    button { min-height: 46px; padding: 10px 14px; font-size: 16px; }
+    .botoes-desenho button { flex: 1 1 auto; }
+    .botoes-desenho button.principal { flex: 1 1 100%; }
+    .botoes-envio button { flex: 1 1 100%; }
+    input[type="text"] { flex: 1 1 140px; min-height: 42px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Oi! Me ajuda com uns números? ✏️</h1>
+
+  <details class="intro card" id="intro">
+    <summary>O que é isso e como fazer</summary>
+    <p>Estou num desafio da <strong>Insper AI</strong>: criar uma inteligência artificial que olha um número desenhado à mão (de 0 a 9) e diz qual é.
+       Ela aprendeu com milhares de números escritos à caneta no papel. Só que, no desafio, os números são desenhados <strong>no computador</strong>, com o mouse ou o dedo, e isso muda bastante o jeito do traço.
+       Até agora, os únicos desenhos de computador que eu tenho para testar são os meus. Então eu não sei se ela entende o jeito de <strong>outras pessoas</strong> desenharem, e não tenho como descobrir sozinho.</p>
+    <p>É aí que você entra. Com os seus desenhos eu consigo testar se ela entende a letra de gente que ela nunca viu, e descobrir em quais números ela se confunde.
+       Leva uns <strong>5 minutos</strong>.</p>
+    <strong>Como fazer</strong>
+    <ol>
+      <li>Escreva um apelido qualquer. Ele serve só para eu saber quais desenhos são de quem.</li>
+      <li>Desenhe o número que aparece em azul e toque (ou clique) em <em>Salvar e próximo</em>. Cada desenho salvo vai sozinho para uma planilha minha.</li>
+      <li><strong>Escreva do jeito que você escreve no dia a dia.</strong> Não precisa caprichar nem fazer "bonito": o seu jeito de escrever é justamente o que eu quero que ela aprenda.</li>
+      <li>A cor do fundo e a grossura do traço mudam sozinhas a cada desenho. É de propósito: no site do desafio cada pessoa usa um jeito diferente, então eu quero um pouco de tudo.</li>
+      <li>Faça uns <strong>20</strong> (2 de cada número). Se estiver divertido, pode continuar: quanto mais, melhor!</li>
+      <li>Quando cansar, é só fechar a página. Não precisa me mandar nada.</li>
+    </ol>
+  </details>
+
+  <div class="grade">
+    <div class="card area-alvo">
+      <div class="botoes" style="margin-top: 0">
+        <label class="pequeno" for="apelido">Seu apelido</label>
+        <input id="apelido" type="text" size="18" maxlength="30" placeholder="ex.: joao" autocomplete="off" autocapitalize="none" spellcheck="false">
+      </div>
+      <div class="aviso" id="avisoApelido" hidden>Falta só o apelido! Pode ser qualquer um, é só para eu separar os desenhos de cada pessoa.</div>
+      <div class="linha-alvo">
+        <span class="pequeno">Desenhe o número</span>
+        <span class="alvo" id="alvo">0</span>
+      </div>
+    </div>
+
+    <div class="card area-tela">
+      <div class="moldura"><canvas id="tela" width="280" height="280"></canvas></div>
+      <div class="botoes botoes-desenho">
+        <button class="principal" id="salvar">Salvar e próximo</button>
+        <button id="limpar">Limpar</button>
+        <button id="pular">Pular</button>
+      </div>
+      <p class="pequeno" style="margin: 8px 0 0">Saiu um rabisco sem querer? Toque em <em>Limpar</em> e desenhe de novo antes de salvar
+         (depois de salvo, o desenho já vai para a planilha). Não quer desenhar esse número agora? Toque em <em>Pular</em>.</p>
+    </div>
+
+    <div class="card area-envio">
+      <p style="margin: 0"><strong>Desenhos salvos: <span id="total">0</span></strong> <span class="pequeno">(sugestão: 20, mas pode fazer quantos quiser)</span></p>
+      <div class="barra"><div id="progresso"></div></div>
+      <p class="pequeno" id="status" style="margin: 4px 0 0"></p>
+      <p class="aviso" id="avisoConfig" hidden>Modo de teste: endereço da planilha não configurado. Os desenhos ficam guardados só neste aparelho.</p>
+      <p class="pronto" id="pronto" hidden>Chegou nos 20, valeu demais! 🎉 Já está tudo salvo na planilha, não precisa me mandar nada. Se quiser fazer mais alguns, cada desenho a mais ajuda.</p>
+      <p class="pequeno" style="margin: 12px 0 0">Quando terminar, é só fechar a página. Cada desenho vai direto para a planilha na hora em que você salva, então não precisa me mandar nada.
+         Se a internet falhar, os desenhos ficam guardados aqui e são enviados sozinhos quando a conexão voltar (com esta página aberta).</p>
+      <p class="pequeno" style="margin-top: 12px">E fica tranquilo: assim que você salva, vão para uma planilha minha no Google só o desenho (com a cor do fundo e a grossura do traço sorteadas), o seu apelido e se você desenhou com o dedo, o mouse ou uma caneta. Nada além disso é coletado.
+         Uma cópia também fica guardada neste navegador.</p>
+      <div class="botoes">
+        <button id="baixar">Baixar cópia dos meus desenhos</button>
+        <button id="zerar">Apagar cópia deste aparelho</button>
+      </div>
+      <p class="pequeno" style="margin: 8px 0 0">Esses botões mexem só na cópia deste aparelho: apagar aqui não apaga nada da planilha.</p>
+      <p class="aviso" id="avisoZerar" hidden></p>
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  // Endereço do App da Web do Apps Script (termina em /exec). Enquanto for o texto abaixo, nada é enviado.
+  const ENDERECO_PLANILHA = 'https://script.google.com/macros/s/AKfycbwXKH7oZKWsLVj7LukxTsFFx-RT5iOyNUpAREbN4k_fTfzWKZ8xaT5daKeVbGenS3C6/exec';
+  const CONFIGURADO = /^https?:\/\//.test(ENDERECO_PLANILHA);
+  const ESPERAS = [5000, 15000, 60000];   // espera antes de tentar de novo após falha de envio
+
+  const SUGESTAO = 20;
+  const CHAVE = 'desenhos-amigos';
+  const tela = document.getElementById('tela');
+  const ctx = tela.getContext('2d', { willReadFrequently: true });
+  const $ = (id) => document.getElementById(id);
+
+  let modo = 'claro';
+  let pincel = 22;
+  let alvo = 0;
+  let fila = [];          // dígitos embaralhados em blocos de 10: todos aparecem com a mesma frequência
+  let desenhou = false;
+  let ultimo = null;
+  let ponteiroAtivo = null;  // só um dedo/ponteiro desenha por vez
+  let entradas = {};         // quantos traços deste desenho vieram de cada tipo de entrada
+  let desenhos = [];         // cada item: {id, rotulo, modo, pincel, autor, entrada, png, enviado, recusado?}
+
+  // id começa com letra para a planilha não confundir com número
+  function novoId() {
+    try { if (crypto.randomUUID) return 'd' + crypto.randomUUID().replace(/-/g, ''); } catch (e) { }
+    let s = 'd';
+    try {
+      const b = new Uint8Array(16); crypto.getRandomValues(b);
+      b.forEach((x) => { s += x.toString(16).padStart(2, '0'); });
+      return s;
+    } catch (e) { }
+    for (let i = 0; i < 32; i++) s += Math.floor(Math.random() * 16).toString(16);
+    return s;
+  }
+
+  function lerArmazenado() {
+    try {
+      desenhos = JSON.parse(localStorage.getItem(CHAVE)) || [];
+      if (!Array.isArray(desenhos)) desenhos = [];
+      $('apelido').value = localStorage.getItem(CHAVE + '-apelido') || '';
+    } catch (e) { desenhos = []; }
+    // itens de antes do envio automático ganham id e entram na fila
+    desenhos.forEach((d) => { if (!d.id) d.id = novoId(); if (d.enviado === undefined) d.enviado = false; });
+  }
+  function guardar() {
+    try { localStorage.setItem(CHAVE, JSON.stringify(desenhos)); } catch (e) { /* sem armazenamento: só perde ao fechar */ }
+    atualizarContagem();
+  }
+
+  const fundo = () => (modo === 'claro' ? '#fff' : '#000');
+  const traco = () => (modo === 'claro' ? '#000' : '#fff');
+
+  function limpar() {
+    ctx.fillStyle = fundo(); ctx.fillRect(0, 0, 280, 280);
+    desenhou = false; ultimo = null; ponteiroAtivo = null; entradas = {};
+  }
+
+  // Pointer Events: o mesmo código serve para mouse, dedo e caneta.
+  function ponto(e) {
+    const r = tela.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * 280 / r.width, y: (e.clientY - r.top) * 280 / r.height };
+  }
+  function tipoEntrada(pointerType) {
+    if (pointerType === 'touch') return 'toque';
+    if (pointerType === 'pen') return 'caneta';
+    return 'mouse';
+  }
+  function inicio(e) {
+    if (ponteiroAtivo !== null) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault();
+    ponteiroAtivo = e.pointerId;
+    try { tela.setPointerCapture(e.pointerId); } catch (err) { }
+    const tipo = tipoEntrada(e.pointerType);
+    entradas[tipo] = (entradas[tipo] || 0) + 1;
+    ultimo = ponto(e); linha(ultimo, ultimo);
+  }
+  function mover(e) {
+    if (e.pointerId !== ponteiroAtivo || !ultimo) return;
+    e.preventDefault();
+    const p = ponto(e); linha(ultimo, p); ultimo = p;
+  }
+  function fim(e) {
+    if (e.pointerId !== ponteiroAtivo) return;
+    ultimo = null; ponteiroAtivo = null;
+  }
+  function linha(a, b) {
+    ctx.strokeStyle = traco(); ctx.lineWidth = pincel; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    desenhou = true;
+  }
+  tela.addEventListener('pointerdown', inicio);
+  tela.addEventListener('pointermove', mover);
+  tela.addEventListener('pointerup', fim);
+  tela.addEventListener('pointercancel', fim);
+  tela.addEventListener('lostpointercapture', fim);
+  tela.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  function entradaMaisFrequente() {
+    let melhor = 'mouse', n = -1;
+    for (const tipo of ['toque', 'mouse', 'caneta']) {
+      if ((entradas[tipo] || 0) > n) { melhor = tipo; n = entradas[tipo] || 0; }
+    }
+    return melhor;
+  }
+
+  function sortear() {
+    modo = Math.random() < 0.5 ? 'claro' : 'escuro';
+    pincel = 14 + Math.floor(Math.random() * 17);   // 14 a 30 px, como no desenhar.html
+  }
+  function proximoAlvo() {
+    if (!fila.length) {
+      fila = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+      for (let i = fila.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [fila[i], fila[j]] = [fila[j], fila[i]]; }
+    }
+    alvo = fila.pop();
+    $('alvo').textContent = alvo;
+    sortear(); limpar();
+  }
+
+  function apelido() {
+    return $('apelido').value.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w-]/g, '_');
+  }
+
+  function salvar() {
+    if (!desenhou) return;
+    if (!apelido()) { $('avisoApelido').hidden = false; $('apelido').focus(); return; }
+    desenhos.push({ id: novoId(), rotulo: alvo, modo: modo, pincel: pincel, autor: apelido(), entrada: entradaMaisFrequente(),
+                    png: tela.toDataURL('image/png').split(',')[1], enviado: false });
+    guardar(); proximoAlvo();
+    enviarPendentes(true);
+  }
+
+  // ---- Envio para a planilha: um por vez, na ordem; em falha, espera e tenta de novo ----
+  const pendentes = () => desenhos.filter((d) => !d.enviado && !d.recusado);
+  let enviando = false;
+  let falhas = 0;
+  let timer = null;
+
+  async function enviarUm(d) {
+    const corpo = { id: d.id, autor: d.autor, rotulo: d.rotulo, modo: d.modo, pincel: d.pincel, entrada: d.entrada, png: d.png };
+    // sem Content-Type: vai como text/plain (requisição simples, sem preflight CORS)
+    const r = await fetch(ENDERECO_PLANILHA, { method: 'POST', body: JSON.stringify(corpo) });
+    return await r.json();   // resposta que não é JSON (página de erro) conta como falha de envio
+  }
+
+  // agora=true: tentativa pedida por um evento (salvar, carregar, voltar a ficar online), que pula a espera.
+  // Sem isso (chamada do timer), respeita a espera em andamento.
+  async function enviarPendentes(agora) {
+    if (!CONFIGURADO || enviando) return;
+    if (timer) { if (!agora) return; clearTimeout(timer); timer = null; }
+    enviando = true;
+    try {
+      let d;
+      while ((d = pendentes()[0])) {
+        let resp;
+        try { resp = await enviarUm(d); }
+        catch (e) {
+          const espera = ESPERAS[Math.min(falhas, ESPERAS.length - 1)];
+          falhas++;
+          timer = setTimeout(() => { timer = null; enviarPendentes(); }, espera);
+          break;
+        }
+        falhas = 0;
+        const item = desenhos.find((x) => x.id === d.id);   // pode ter sido apagado daqui enquanto enviava
+        if (resp && resp.ok === true) {
+          if (item) item.enviado = true;
+        } else {
+          if (item) item.recusado = true;
+          console.warn('A planilha recusou o desenho', d.id, resp && resp.erro);
+        }
+        guardar();
+      }
+    } finally {
+      enviando = false;
+      atualizarContagem();
+    }
+  }
+
+  function atualizarContagem() {
+    const nEnviados = desenhos.filter((d) => d.enviado).length;
+    const nPendentes = pendentes().length;
+    const nRecusados = desenhos.filter((d) => d.recusado).length;
+    $('total').textContent = desenhos.length;
+    $('progresso').style.width = Math.min(100, 100 * desenhos.length / SUGESTAO) + '%';
+    let status;
+    if (!CONFIGURADO) status = desenhos.length + (desenhos.length === 1 ? ' desenho guardado' : ' desenhos guardados') + ' neste aparelho.';
+    else {
+      status = nEnviados + (nEnviados === 1 ? ' desenho salvo' : ' desenhos salvos') + ' na planilha.';
+      // "enviando" enquanto a tentativa está em andamento; "aguardando conexão" só depois de uma falha
+      if (nPendentes) status += ' ' + nPendentes + ((timer || !navigator.onLine) ? ' aguardando conexão…' : ' enviando…');
+      if (nRecusados) status += ' ' + nRecusados + ' não ' + (nRecusados === 1 ? 'foi aceito' : 'foram aceitos') + ' pela planilha.';
+    }
+    $('status').textContent = status;
+    $('avisoConfig').hidden = CONFIGURADO;
+    $('pronto').hidden = !(CONFIGURADO && nEnviados >= SUGESTAO && nPendentes === 0);
+    $('baixar').disabled = desenhos.length === 0;
+    $('zerar').disabled = desenhos.length === 0;
+    if (!desenhos.length) { $('zerar').textContent = 'Apagar cópia deste aparelho'; $('avisoZerar').hidden = true; }
+  }
+
+  // ---- Plano B: baixar uma cópia (mesmo formato de antes) ----
+  function baixar() {
+    const copia = desenhos.map((d) => ({ rotulo: d.rotulo, modo: d.modo, pincel: d.pincel, autor: d.autor, entrada: d.entrada, png: d.png }));
+    const blob = new Blob([JSON.stringify(copia)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'desenhos_' + (apelido() || 'sem_apelido') + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+
+  $('salvar').onclick = salvar;
+  $('pular').onclick = proximoAlvo;
+  $('limpar').onclick = limpar;
+  $('zerar').onclick = () => {
+    if (desenhos.length && $('zerar').textContent !== 'Confirmar: apagar deste aparelho') {
+      $('zerar').textContent = 'Confirmar: apagar deste aparelho';
+      const n = CONFIGURADO ? pendentes().length : desenhos.length;
+      $('avisoZerar').textContent = n
+        ? 'Atenção: ' + n + (n === 1 ? ' desenho ainda não chegou' : ' desenhos ainda não chegaram') + ' na planilha e ' + (n === 1 ? 'seria perdido' : 'seriam perdidos') + '.'
+        : 'Os desenhos que já estão na planilha continuam lá.';
+      $('avisoZerar').hidden = false;
+      return;
+    }
+    desenhos = []; guardar();
+  };
+  $('apelido').oninput = () => {
+    $('avisoApelido').hidden = true;
+    try { localStorage.setItem(CHAVE + '-apelido', $('apelido').value); } catch (e) { }
+  };
+  $('baixar').onclick = baixar;
+  window.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.tagName !== 'INPUT') salvar(); });
+  window.addEventListener('online', () => { falhas = 0; enviarPendentes(true); });
+
+  lerArmazenado(); guardar(); proximoAlvo();
+  enviarPendentes(true);
+
+  // Instruções: sempre abertas em tela larga; no celular, abertas só na primeira visita (sem desenhos salvos).
+  let telaLarga = false;
+  try { telaLarga = window.matchMedia('(min-width: 901px)').matches; } catch (e) { }
+  $('intro').open = telaLarga || desenhos.length === 0;
+})();
+</script>
+</body>
+</html>
